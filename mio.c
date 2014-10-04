@@ -5,32 +5,73 @@
 
 #include "mio.h"
 
-MIO *MIOCreate(char *filename)
+
+void MIOClose(MIO *md)
+{
+	if(md->bf != NULL) {
+		fclose(bf);
+	}
+	if(md->fname != NULL) {
+		free(md->fname);
+	}
+	free(md);
+	return;
+}
+	
+/*
+ * same semantics as fopen()
+ */
+MIO *MIOOpen(char *filename, char *mode)
 {
 	MIO *md;
 	int flen;
 	char *f;
+	FILE *bf;
+	int fd;
+	int flags;
 
-	md = (MIO *)malloc(sizeof(MIO));
-	if(md == NULL) {
+	/*
+	 * try to open the file first
+	 */
+	bf = fopen(filename,mode);
+	if(bf == NULL) {
 		return(NULL);
 	}
-	memset(md,0,sizeof(MIO));
+
+	fd = fileno(bf);
+	if(fd < 0) {
+		fclose(bf);
+		return(NULL);
+	}
+
+	md = (MIO *)Malloc(sizeof(MIO));
+	if(md == NULL) {
+		fclose(bf);
+		return(NULL);
+	}
 
 	flen = strlen(filename);
-	f = (char *)malloc(flen+1);
+	f = (char *)Malloc(flen+1);
 	if(f == NULL) {
-		free(md);
+		MIOClose(md);
 		return(NULL);
 	}
-	memset(f,0,flen);
-	memcpy(f,filename,flen);
 
+	strncpy(f,filename,flen);
 	mio->fname = f;
+	strncpy(mio->mode,mode,2);
+	mio->bf = bf;
+	mio->fd = fd;
+
+	if(strcmp(mio->mode,"r") == 0) {
+		flags = PROT_READ;
+	} else {
+		flags = (PROT_READ | PROT_WRITE);
+	}
 
 XXX
+
 }
-	
 
 	
 
