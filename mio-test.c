@@ -12,11 +12,11 @@ char Rfile[4096];
 int main(int argc, char **argv)
 {
 	int c;
-	int fields;
 	double *values;
 	int i;
 	MIO *mio;
 	unsigned long int size;
+	int fields;
 
 
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
@@ -39,7 +39,7 @@ int main(int argc, char **argv)
 		exit(1);
 	} 
 
-	size = MIOFileSize(Rfile);
+	size = MIOSize(Rfile);
 	if((long int)size < 0) {
 		fprintf(stderr,"MIOFileSize failed for file %s\n",
 			Rfile);
@@ -50,6 +50,12 @@ int main(int argc, char **argv)
 			Rfile,
 			size);
 	mio = MIOOpen(Rfile,"r",size);
+	printf("attempting open for %s complete\n",Rfile);
+
+	printf("attempting text field count\n");
+	fields = MIOTextFields(mio);
+	printf("file %s has %d text fields\n",Rfile,fields);
+	
 
 	printf("attempting close for %s for read\n",
 			Rfile);

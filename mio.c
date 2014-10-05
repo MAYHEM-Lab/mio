@@ -94,7 +94,7 @@ MIO *MIOOpen(char *filename, char *mode, unsigned long int size)
 
 }
 
-unsigned long int MIOFileSize(char *file)
+unsigned long int MIOSize(char *file)
 {
 	int psize;
 	unsigned long int size;
@@ -117,6 +117,104 @@ unsigned long int MIOFileSize(char *file)
 	return(size);
 
 }
+
+int MIOTextFields(MIO *mio)
+{
+	FILE *ffd;
+	char *line_buff;
+	char *ferr;
+	int count;
+	int found;
+	int i;
+	int j;
+	char c;
+	char *l;
+	char *separators = MIOSEPARATORS;
+
+	if(mio->fname == NULL) {
+		return(-1);
+	}
+
+	ffd = fopen(mio->fname,"r");
+	if(ffd == NULL) {
+		return(-1);
+	}
+
+	line_buff = (char *)Malloc(MIOLINESIZE);
+	if(line_buff == NULL) {
+		return(-1);
+	}
+
+	count = -1;
+	while(!feof(ffd)) {
+		ferr = fgets(line_buff,MIOLINESIZE,ffd);
+		if(ferr == NULL) {
+			break;
+		}
+		if(line_buff[0] == '#') {
+			continue;
+		}
+		if(line_buff[0] == '\n') {
+			continue;
+		}
+
+		/*
+		 * clear out any trailing separators
+		 */
+		i = strlen(line_buff) - 1;
+		while(i >= 0) {
+			found = 0;
+			for(j=0; j < strlen(separators); j++) {
+				if(line_buff[i] == separators[j]) {
+					line_buff[i] = 0;
+					found = 1;
+					break;
+				}
+			}
+			if(found == 0) {
+				break;
+			}
+			i--;
+		}
+
+		/*
+		 * clear out any leading separators
+		 */
+		l = line_buff;
+		i = 0;
+		while(i < strlen(line_buff)) {
+			found = 0;
+			for(j=0; j < strlen(separators); j++) {
+				if(line_buff[i] == separators[j]) {
+					l++;
+					found = 1;
+					break;
+				}
+			}
+			if(found == 0) {
+				break;
+			}
+			i++;
+		}
+
+		count = 0;
+		for(i=0; i < strlen(l); i++) {
+			for(j = 0; j < strlen(separators); j++) {
+				if(l[i] == separators[j]) {
+					count++;
+				}
+			}
+		}
+		free(line_buff);
+		return(count+1);
+	}
+
+	free(line_buff);
+	return(count);
+}
+		
+
+	
 
 void *MIOAddr(MIO *mio)
 {

@@ -12,7 +12,7 @@ mio.o: mio.c ${INC} mio.h
 mymalloc.o: mymalloc.c mymalloc.h
 	${CC} ${CFLAGS} -c mymalloc.c
 
-mio-test: ${INC} mio.h mio.o ${LIBS}
+mio-test: mio-test.c ${INC} mio.h mio.o ${LIBS}
 	${CC} ${CFLAGS} -o mio-test mio-test.c mio.o ${LIBS}
 
 clean:
