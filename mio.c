@@ -5,6 +5,7 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include "mio.h"
 
@@ -106,14 +107,14 @@ MIO *MIOMalloc(unsigned long int size)
 	}
 
 	/*
-	 * if it is read only, make the file private, else allow the
-	 * backing file to be updated (MAP_SHARED)
+	 * malloc is read/write and private
 	 */
 	prot = (PROT_READ | PROT_WRITE);
-	flags = MAP_ANON;
+	flags = (MAP_ANON | MAP_PRIVATE);
 
 	mio->addr = mmap(NULL,size,prot,flags,-1,0);
-	if(mio->addr == NULL) {
+	if(mio->addr == MAP_FAILED) {
+		perror("MIOMalloc");
 		MIOClose(mio);
 		return(NULL);
 	}
@@ -123,6 +124,9 @@ MIO *MIOMalloc(unsigned long int size)
 
 }
 
+/*
+ * rounds to page size
+ */
 unsigned long int MIOSize(char *file)
 {
 	int psize;
@@ -181,6 +185,10 @@ int MIOTextFields(MIO *mio)
 	char *l;
 	char *separators = MIOSEPARATORS;
 
+	if(mio->fields != 0) {
+		return(mio->fields);
+	}
+
 	if(mio->fname == NULL) {
 		return(-1);
 	}
@@ -192,6 +200,7 @@ int MIOTextFields(MIO *mio)
 
 	line_buff = (char *)Malloc(MIOLINESIZE);
 	if(line_buff == NULL) {
+		fclose(ffd);
 		return(-1);
 	}
 
@@ -256,9 +265,11 @@ int MIOTextFields(MIO *mio)
 			}
 		}
 		free(line_buff);
+		fclose(ffd);
 		return(count+1);
 	}
 
+	fclose(ffd);
 	free(line_buff);
 	return(count);
 }
@@ -270,17 +281,23 @@ unsigned long int MIOTextRecords(MIO *mio)
 	char *ferr;
 	unsigned long int count;
 
+	if(mio->recs != 0) {
+		return(mio->recs);
+	}
+
 	if(mio->fname == NULL) {
 		return(-1);
 	}
 
 	ffd = fopen(mio->fname,"r");
 	if(ffd == NULL) {
+		fclose(ffd);
 		return(-1);
 	}
 
 	line_buff = (char *)Malloc(MIOLINESIZE);
 	if(line_buff == NULL) {
+		fclose(ffd);
 		return(-1);
 	}
 
@@ -299,6 +316,7 @@ unsigned long int MIOTextRecords(MIO *mio)
 		count++;
 	}
 
+	fclose(ffd);
 	free(line_buff);
 	return(count);
 }
@@ -318,8 +336,10 @@ MIO *MIODoubleFromText(MIO *t_mio, char *dfname)
 	int k;
 	char *separators = MIOSEPARATORS;
 	char *curr;
+	char *next;
 	char *tbuf;
 	double *darray;
+	double value;
 	unsigned long int row;
 	int col;
 
@@ -329,7 +349,7 @@ MIO *MIODoubleFromText(MIO *t_mio, char *dfname)
 	}
 
 	recs = MIOTextRecords(t_mio);
-	if(recs < 0) {
+	if(recs == 0xFFFFFFFFFFFFFFFF) {
 		return(NULL);
 	}
 
@@ -343,7 +363,7 @@ MIO *MIODoubleFromText(MIO *t_mio, char *dfname)
 	size = (size+1) * psize;
 
 	if(dfname != NULL) {
-		d_mio = MIOOpen(dfname,"r+",size);
+		d_mio = MIOOpen(dfname,"w",size);
 	} else {
 		d_mio = MIOMalloc(size);
 	}
@@ -398,7 +418,7 @@ MIO *MIODoubleFromText(MIO *t_mio, char *dfname)
 
 		for(k=0; k < fields; k++) {
 			value = strtod(curr,&next);
-			darray[row*fields+col]= value;
+			darray[row*fields+col] = value;
 			col++;
 			curr = next+1;
 			if((*curr == 0) || (curr >= (tbuf+fsize))) {
@@ -414,9 +434,132 @@ MIO *MIODoubleFromText(MIO *t_mio, char *dfname)
 	}
 
 	msync(d_mio->addr,d_mio->size,MS_SYNC);
-			
-		
+
+	d_mio->type = MIODOUBLE;
+	d_mio->fields = fields;
+	d_mio->recs = recs;
+
 	return(d_mio);
 }
 	
+void MIOPrintText(MIO *t_mio)
+{
+	char *tbuf;
+	unsigned long int fsize;
+	int j;
+	char *curr;
+	char *next;
+	char *out;
+	int i;
+	char *separators = MIOSEPARATORS;
+	unsigned int len;
+	int found;
+	int found2;
 
+
+	tbuf = MIOAddr(t_mio);
+	if(tbuf == NULL) {
+		return;
+	}
+
+	fsize = MIOFileSize(t_mio->fname);
+	if(fsize <= 0) {
+		return;
+	}
+
+	curr = tbuf;
+	next = curr;
+	/*
+	 * remove leading separators
+	 */
+	while(*next != 0) {
+		found = 0;
+		for(i=0; i < strlen(separators); i++) {
+			if(*next == separators[i]) {
+				next++;
+				found = 1;
+				break;
+			}
+		}
+		if(found == 0) {
+			break;
+		}
+	}
+
+	if(*next == 0) {
+		return;
+	}
+
+	curr = next;
+	while(curr < (tbuf+fsize)) {
+		found = 0;
+		for(i=0; i < strlen(separators); i++) {
+			if((*next == separators[i]) ||
+			   (*next == 0)) {
+				found = 1;
+				break;
+			}
+		}
+		if(found == 1) {
+			len = next - curr + 1;
+			out = (char *)Malloc(len);
+			if(out == NULL) {
+				return;
+			}
+			strncpy(out,curr,len-1);
+			if(*next != 0) {
+				printf("%s%c",
+					out,
+					separators[i]);
+			} else {
+				printf("%s\n",out);
+			}
+			Free(out);
+			next = next +1;
+			/*
+			 * skip multiple separators
+			 */
+			while(*next != 0) {
+				found2 = 0;
+				for(i=0; i < strlen(separators); i++) {
+					if((*next == 0) ||
+					   (*next == separators[i])) {
+						found2 = 1;
+						break;
+					}
+				}
+				if((found2 == 1) &&
+				   (*next != 0)) {
+					next++;
+					continue;
+				}
+				if(*next != 0) {
+					break;
+				}
+			}
+			if(*next == 0) {
+				return;
+			}
+			curr = next;
+			continue;
+		}
+		next++;
+	}
+
+	return;
+}
+	
+MIO *MIOOpenText(char *filename, char *mode, unsigned long int size)
+{
+	MIO *mio;
+
+	mio = MIOOpen(filename,mode,size);
+	if(mio == NULL) {
+		return(NULL);
+	}
+	mio->type = MIOTEXT;
+	mio->fields = MIOTextFields(mio);
+	mio->recs = MIOTextRecords(mio);
+
+	return(mio);
+}
