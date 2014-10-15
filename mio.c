@@ -39,6 +39,10 @@ MIO *MIOOpen(char *filename, char *mode, unsigned long int size)
 	int flags;
 	int prot;
 
+	if(mode == NULL) {
+		return(NULL);
+	}
+
 	/*
 	 * try to open the file first
 	 */
