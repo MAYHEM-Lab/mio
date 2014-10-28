@@ -9,7 +9,6 @@
 
 #include "mio.h"
 
-
 void MIOClose(MIO *mio)
 {
 	if(mio->bf != NULL) {
