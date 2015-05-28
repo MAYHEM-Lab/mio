@@ -187,6 +187,7 @@ int MIOTextFields(MIO *mio)
 	char c;
 	char *l;
 	char *separators = MIOSEPARATORS;
+	int sep_run;
 
 	if(mio->fields != 0) {
 		return(mio->fields);
@@ -260,11 +261,20 @@ int MIOTextFields(MIO *mio)
 		}
 
 		count = 0;
+		sep_run = 0;
 		for(i=0; i < strlen(l); i++) {
+			found = 0;
 			for(j = 0; j < strlen(separators); j++) {
 				if(l[i] == separators[j]) {
-					count++;
+					if(sep_run == 0) {
+						count++;
+						sep_run = 1;
+					}
+					found = 1;
 				}
+			}
+			if(found == 0) {
+				sep_run = 0;
 			}
 		}
 		free(line_buff);
