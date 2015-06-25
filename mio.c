@@ -403,7 +403,7 @@ MIO *MIODoubleFromText(MIO *t_mio, char *dfname)
 	i = 0;
 	row = 0;
 	col = 0;
-	while(i < recs) {
+	while((i < recs) && (row < recs)) {
 		while((*curr == 0) && (curr < (tbuf + fsize))) {
 			curr++;
 		}
@@ -423,6 +423,9 @@ MIO *MIODoubleFromText(MIO *t_mio, char *dfname)
 		 */
 		if(*curr == 0) {
 			i++;
+			if(i >= recs) {
+				break;
+			}
 			continue;
 		}
 		if(found == 1) {
@@ -576,3 +579,21 @@ MIO *MIOOpenText(char *filename, char *mode, unsigned long int size)
 
 	return(mio);
 }
+
+MIO *MIOOpenDouble(char *filename, char *mode, unsigned int long size)
+{
+	MIO *mio;
+	MIO *d_mio;
+
+	mio = MIOOpenText(filename,mode,size);
+	if(mio == NULL) {
+		return(NULL);
+	}
+
+	d_mio = MIODoubleFromText(mio,NULL);
+	MIOClose(mio);
+
+	return(d_mio);
+}
+
+	

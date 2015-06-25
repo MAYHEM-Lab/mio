@@ -37,6 +37,7 @@ void MIOPrintText(MIO *t_mio);
 MIO *MIOOpenText(char *filename, char *mode, unsigned long int size);
 
 MIO *MIODoubleFromText(MIO *t_mio, char *dfname);
+MIO *MIOOpenDouble(char *filename, char *mode, unsigned int long size);
 
 #endif
 
