@@ -14,6 +14,7 @@ struct mio_stc
 	unsigned long int size;
 	unsigned int long recs;
 	int fields;
+	struct mio_stc *text_index;
 };
 
 typedef struct mio_stc MIO;
