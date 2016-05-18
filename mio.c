@@ -580,6 +580,160 @@ MIO *MIOOpenText(char *filename, char *mode, unsigned long int size)
 	return(mio);
 }
 
+char *MIONextLine(MIO *mio, char *start)
+{
+	char *curr;
+	char *end;
+
+	curr = start;
+	end = (char *)mio->addr + mio->size;
+	while((curr < end) && (*curr != '\n')) {
+		curr++;
+	}
+	if(curr == end) {
+		return(NULL);
+	}
+	curr++;
+	if(curr == end) {
+		return(NULL);
+	}
+	return(curr);
+}
+	
+
+int MIOIndexText(MIO *mio)
+{
+	int i;
+	int j;
+	int k;
+	char *curr;
+	char *here;
+	char *end;
+	char *separators = MIOSEPARATORS;
+	int good;
+	int next_field;
+	long rec;
+	char **index;
+
+	if(mio->type != MIOTEXT) {
+		return(-1);
+	}
+
+	if(mio->text_index != NULL) {
+		return(1);
+	}
+
+	/*
+	 * point to first field in each record
+	 */
+	mio->text_index = MIOMalloc(mio->recs*sizeof(char*));
+	if(mio->text_index == NULL) {
+		return(-1);
+	}
+
+	index = (char **)MIOAddr(mio->text_index);
+
+	curr = (char *)mio->addr;
+	end = (char *)mio->addr + mio->size;
+	rec = 0;
+	while(curr != NULL) {
+		while((curr < end) && (*curr == '\n')) {
+			curr++;
+		}
+		if(curr == end) {
+			break;
+		}
+		while((curr < end) && (*curr == '#')) {
+			curr = MIONextLine(mio,curr);
+			if(curr == NULL) {
+				break;
+			}
+		}
+		if(curr == NULL) {
+			break;
+		}
+		/*
+		 * check to make sure there are the correct number of
+		 * fields
+		 */
+		good = 1;
+		here = curr;
+		for(i=0; i < mio->fields; i++) {
+			while(here < end) {
+				if(*here == '\n') {
+					good = 0;
+					break;
+				}
+				next_field = 0;
+				for(k=0; k < strlen(separators); k++) {
+					if(*here == separators[k]) {
+						next_field = 1;
+						break;
+					}
+				}
+				if(next_field == 1) {
+					break;
+				}
+				here++;
+			}
+		}
+		if(good == 1) {
+			index[rec] = curr;
+		}
+		rec++;
+		curr = MIONextLine(mio,curr);
+	}
+
+	return(1);
+}
+		
+
+char *MIOGetText(MIO *mio, int rec, int field)
+{
+	int i;
+	int j;
+	int k;
+	char **index;
+	char *text_rec;
+	char *curr;
+	char *separators = MIOSEPARATORS;
+
+	if(mio->type != MIOTEXT) {
+		return(NULL);
+	}
+
+	if(rec >= mio->recs) {
+		return(NULL);
+	}
+
+	if(field >= mio->fields) {
+		return(NULL);
+	}
+
+	if(mio->text_index == NULL) {
+		return(NULL);
+	}
+
+	index = (char **)MIOAddr(mio->text_index);
+	text_rec = index[rec];
+
+	curr = text_rec;
+	while(i < field) {
+		for(k=0; k < strlen(separators); k++) {
+			if(*curr == separators[k]) {
+				i++;
+				curr++;
+				continue;
+			}
+		}
+		curr++;
+	}
+
+	return(curr);
+}
+		
+
+
 MIO *MIOOpenDouble(char *filename, char *mode, unsigned int long size)
 {
 	MIO *mio;
