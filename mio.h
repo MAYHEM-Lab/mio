@@ -40,5 +40,8 @@ MIO *MIOOpenText(char *filename, char *mode, unsigned long int size);
 MIO *MIODoubleFromText(MIO *t_mio, char *dfname);
 MIO *MIOOpenDouble(char *filename, char *mode, unsigned int long size);
 
+int MIOIndexText(MIO *mio);
+char *MIOGetText(MIO *mio, int rec, int field);
+
 #endif
 

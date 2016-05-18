@@ -21,6 +21,11 @@ int main(int argc, char **argv)
 	int fields;
 	unsigned long int recs;
 	double *darray;
+	long rec;
+	int field;
+	char **index;
+	char *text_field;
+	int err;
 
 
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
@@ -89,6 +94,32 @@ int main(int argc, char **argv)
 
 	printf("attempting close for for double\n");
 	MIOClose(d_mio);
+
+	printf("attempting text open again\n");
+	mio = MIOOpenText(Rfile,"r",size);
+	if(mio == NULL) {
+		printf("second open failed\n");
+		exit(1);
+	}
+	err = MIOIndexText(mio);
+	if(err < 0) {
+		printf("MIOIndexText failed\n");
+		exit(1);
+	}
+	index = (char **)MIOAddr(mio->text_index);
+	for(rec=0; rec < mio->recs; rec++) {
+		for(field=0; field < mio->fields; field++) {
+			text_field = MIOGetText(mio,rec,field);
+			if(text_field == NULL) {
+			printf("no text field for rec: %ld, field: %d\n",
+				rec,field);
+				exit(1);
+			}
+			printf("%s ",text_field);
+		}
+	}
+	MIOClose(mio);
+		
 
 	return(0);
 }

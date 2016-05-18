@@ -21,6 +21,9 @@ void MIOClose(MIO *mio)
 		msync(mio->addr,mio->size,MS_SYNC);
 		munmap(mio->addr,mio->size);
 	}
+	if(mio->text_index != NULL) {
+		MIOClose(mio->text_index);
+	}
 	free(mio);
 	return;
 }
@@ -93,6 +96,7 @@ MIO *MIOOpen(char *filename, char *mode, unsigned long int size)
 		return(NULL);
 	}
 	mio->size = size;
+	mio->text_index = NULL;
 
 	return(mio);
 
@@ -122,6 +126,7 @@ MIO *MIOMalloc(unsigned long int size)
 		return(NULL);
 	}
 	mio->size = size;
+	mio->text_index = NULL;
 
 	return(mio);
 
@@ -576,6 +581,7 @@ MIO *MIOOpenText(char *filename, char *mode, unsigned long int size)
 	mio->type = MIOTEXT;
 	mio->fields = MIOTextFields(mio);
 	mio->recs = MIOTextRecords(mio);
+	mio->text_index = NULL;
 
 	return(mio);
 }
@@ -731,7 +737,6 @@ char *MIOGetText(MIO *mio, int rec, int field)
 
 	return(curr);
 }
-		
 
 
 MIO *MIOOpenDouble(char *filename, char *mode, unsigned int long size)
