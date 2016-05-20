@@ -107,6 +107,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	index = (char **)MIOAddr(mio->text_index);
+	printf("printing text fields\n");
 	for(rec=0; rec < mio->recs; rec++) {
 		for(field=0; field < mio->fields; field++) {
 			text_field = MIOGetText(mio,rec,field);
@@ -115,18 +116,19 @@ int main(int argc, char **argv)
 				rec,field);
 				exit(1);
 			}
-			printf("%s ",text_field);
+			if(field < (mio->fields-1)) {
+				printf("%s ",text_field);
+			} else {
+				printf("%s",text_field);
+			}
+			Free(text_field);
 		}
+		printf("\n");
 	}
+	printf("closing text mio\n");
 	MIOClose(mio);
 		
 
 	return(0);
 }
-
-
-	
-
-	
-	
 

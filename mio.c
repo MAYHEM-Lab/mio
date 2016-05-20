@@ -702,7 +702,11 @@ char *MIOGetText(MIO *mio, int rec, int field)
 	char **index;
 	char *text_rec;
 	char *curr;
+	char *end;
+	char *str;
 	char *separators = MIOSEPARATORS;
+	int size;
+	int done;
 
 	if(mio->type != MIOTEXT) {
 		return(NULL);
@@ -724,18 +728,47 @@ char *MIOGetText(MIO *mio, int rec, int field)
 	text_rec = index[rec];
 
 	curr = text_rec;
+	i=0;
 	while(i < field) {
 		for(k=0; k < strlen(separators); k++) {
 			if(*curr == separators[k]) {
 				i++;
+				if(i == field) {
+					break;
+				}
 				curr++;
 				continue;
 			}
 		}
 		curr++;
+		if(*curr == 0) {
+			break;
+		}
+	}
+	end = curr;
+	done = 0;
+	while(1) {
+		for(k=0; k < strlen(separators); k++) {
+			if(*end == separators[k]) {
+				done = 1;
+				break;
+			}
+			if(*end == 0) {
+				done = 1;
+				break;
+			}
+		}
+		if(done == 1) {
+			break;
+		}
+		end++;
 	}
 
-	return(curr);
+	size = (end - curr) + 1;
+	str = (char *)Malloc(size);
+	strncpy(str,curr,size-1);
+
+	return(str);
 }
 
 
