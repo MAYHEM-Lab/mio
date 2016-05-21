@@ -85,13 +85,18 @@ MIO *MIOOpen(char *filename, char *mode, unsigned long int size)
 	if(strcmp(mio->mode,"r") == 0) {
 		prot = PROT_READ;
 		flags = MAP_PRIVATE;
-	} else {
+	} else if(strcmp(mio->mode,"w") == 0) {
+		prot = PROT_WRITE;
+		flags = MAP_PRIVATE;
+//		flags = MAP_SHARED;
+	} else if(strcmp(mio->mode,"rw") == 0) {
 		prot = (PROT_READ | PROT_WRITE);
-		flags = MAP_SHARED;
+		flags = MAP_PRIVATE;
 	}
 
 	mio->addr = mmap(NULL,size,prot,flags,mio->fd,0);
-	if(mio->addr == NULL) {
+	if(mio->addr == MAP_FAILED) {
+		perror("MIOOpen");
 		MIOClose(mio);
 		return(NULL);
 	}
@@ -672,7 +677,8 @@ int MIOIndexText(MIO *mio)
 				}
 				next_field = 0;
 				for(k=0; k < strlen(separators); k++) {
-					if(*here == separators[k]) {
+					if((*here == separators[k]) ||
+					   (*here == 0)) {
 						next_field = 1;
 						break;
 					}
@@ -731,7 +737,7 @@ char *MIOGetText(MIO *mio, int rec, int field)
 	i=0;
 	while(i < field) {
 		for(k=0; k < strlen(separators); k++) {
-			if(*curr == separators[k]) {
+			if((*curr == separators[k]) || (*curr == 0)) {
 				i++;
 				if(i == field) {
 					break;
@@ -741,19 +747,12 @@ char *MIOGetText(MIO *mio, int rec, int field)
 			}
 		}
 		curr++;
-		if(*curr == 0) {
-			break;
-		}
 	}
 	end = curr;
 	done = 0;
 	while(1) {
 		for(k=0; k < strlen(separators); k++) {
-			if(*end == separators[k]) {
-				done = 1;
-				break;
-			}
-			if(*end == 0) {
+			if((*end == separators[k]) || (*end == 0)) {
 				done = 1;
 				break;
 			}
