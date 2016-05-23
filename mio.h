@@ -7,7 +7,7 @@ struct mio_stc
 {
 	unsigned char type;
 	char *fname;
-	char mode[3];	/* mode is 2 char for fopen() */
+	char mode[10];	
 	FILE *bf;
 	int fd;
 	void *addr;

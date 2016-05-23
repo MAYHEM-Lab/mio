@@ -74,7 +74,7 @@ MIO *MIOOpen(char *filename, char *mode, unsigned long int size)
 
 	strncpy(f,filename,flen);
 	mio->fname = f;
-	strncpy(mio->mode,mode,2);
+	strncpy(mio->mode,mode,sizeof(mio->mode));
 	mio->bf = bf;
 	mio->fd = fd;
 
@@ -82,16 +82,28 @@ MIO *MIOOpen(char *filename, char *mode, unsigned long int size)
 	 * if it is read only, make the file private, else allow the
 	 * backing file to be updated (MAP_SHARED)
 	 */
-	if(strcmp(mio->mode,"r") == 0) {
-		prot = PROT_READ;
+	prot = 0;
+	if(strcasestr(mio->mode,"r") != NULL) {
+		prot |= PROT_READ;
 		flags = MAP_PRIVATE;
-	} else if(strcmp(mio->mode,"w") == 0) {
-		prot = PROT_WRITE;
+	} 
+
+	if(strcasestr(mio->mode,"w") != NULL) {
+		prot |= PROT_WRITE;
 		flags = MAP_PRIVATE;
 //		flags = MAP_SHARED;
-	} else if(strcmp(mio->mode,"rw") == 0) {
-		prot = (PROT_READ | PROT_WRITE);
+	}
+
+	if(strcasestr(mio->mode,"a") != NULL) {
+		prot |= PROT_WRITE;
 		flags = MAP_PRIVATE;
+//		flags = MAP_SHARED;
+	}
+
+	if(strcasestr(mio->mode,"+") != NULL) {
+		prot |= PROT_READ;
+		flags = MAP_PRIVATE;
+//		flags = MAP_SHARED;
 	}
 
 	mio->addr = mmap(NULL,size,prot,flags,mio->fd,0);
