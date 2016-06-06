@@ -11,15 +11,16 @@
 
 void MIOClose(MIO *mio)
 {
+	if(mio->addr != NULL) {
+		msync(mio->addr,mio->size,MS_SYNC);
+		munmap(mio->addr,mio->size);
+	}
 	if(mio->bf != NULL) {
+		fflush(mio->bf);
 		fclose(mio->bf);
 	}
 	if(mio->fname != NULL) {
 		free(mio->fname);
-	}
-	if(mio->addr != NULL) {
-		msync(mio->addr,mio->size,MS_SYNC);
-		munmap(mio->addr,mio->size);
 	}
 	if(mio->text_index != NULL) {
 		MIOClose(mio->text_index);
@@ -40,6 +41,9 @@ MIO *MIOOpen(char *filename, char *mode, unsigned long int size)
 	int fd;
 	int flags;
 	int prot;
+	int err;
+	long int fsize;
+	unsigned char zero = ' ';
 
 	if(mode == NULL) {
 		return(NULL);
@@ -85,25 +89,50 @@ MIO *MIOOpen(char *filename, char *mode, unsigned long int size)
 	prot = 0;
 	if(strcasestr(mio->mode,"r") != NULL) {
 		prot |= PROT_READ;
-		flags = MAP_PRIVATE;
+//		flags = MAP_PRIVATE;
+		flags = MAP_SHARED;
 	} 
 
 	if(strcasestr(mio->mode,"w") != NULL) {
 		prot |= PROT_WRITE;
-		flags = MAP_PRIVATE;
-//		flags = MAP_SHARED;
+//		flags = MAP_PRIVATE;
+		flags = MAP_SHARED;
 	}
 
 	if(strcasestr(mio->mode,"a") != NULL) {
 		prot |= PROT_WRITE;
-		flags = MAP_PRIVATE;
-//		flags = MAP_SHARED;
+//		flags = MAP_PRIVATE;
+		flags = MAP_SHARED;
 	}
 
 	if(strcasestr(mio->mode,"+") != NULL) {
 		prot |= PROT_READ;
-		flags = MAP_PRIVATE;
-//		flags = MAP_SHARED;
+//		flags = MAP_PRIVATE;
+		flags = MAP_SHARED;
+	}
+
+	/*
+	 * mmap will not allocate writable memory if the backing file is
+	 * not sufficiently large
+	 */
+	if(prot & PROT_WRITE) {
+		fsize = MIOFileSize(filename);
+		if(fsize < 0) {
+			perror("MIOOpen");
+			MIOClose(mio);
+			return(NULL);
+		}
+		if(fsize < size) {
+//			err = lseek(fd,size,SEEK_SET);
+			err = ftruncate(fd,size);
+		}
+		if(err < 0) {
+			perror("MIOOpen");
+			MIOClose(mio);
+			return(NULL);
+		}
+//		write(fd,&zero,1);
+//		lseek(fd,0,SEEK_SET);
 	}
 
 	mio->addr = mmap(NULL,size,prot,flags,mio->fd,0);
