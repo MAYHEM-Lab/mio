@@ -417,7 +417,7 @@ MIO *MIODoubleFromText(MIO *t_mio, char *dfname)
 		return(NULL);
 	}
 
-	min_size = fields*recs*sizeof(double);
+	min_size = fields*(recs+1)*sizeof(double);
 
 	/*
 	 * round up to page size
@@ -489,12 +489,12 @@ MIO *MIODoubleFromText(MIO *t_mio, char *dfname)
 			col++;
 			/*
 			 * could be on page boundary
-			 */
-			if (*curr == '\n') {
+			if (*next == '\n') {
 				break;
 			}
+			 */
 			curr = next+1;
-			if((*curr == 0) || (curr >= (tbuf+fsize))) {
+			if((curr >= (tbuf+fsize)) || (*curr == 0)) {
 				break;
 			}
 		}
