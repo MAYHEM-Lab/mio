@@ -488,7 +488,11 @@ MIO *MIODoubleFromText(MIO *t_mio, char *dfname)
 			darray[row*fields+col] = value;
 			col++;
 			curr = next+1;
-			if((*curr == 0) || (curr >= (tbuf+fsize))) {
+			/*
+			 * could be on page boundary
+			 */
+			if((*curr == '\n') || 
+				(*curr == 0) || (curr >= (tbuf+fsize))) {
 				break;
 			}
 		}
