@@ -834,4 +834,10 @@ MIO *MIOOpenDouble(char *filename, char *mode, unsigned int long size)
 	return(d_mio);
 }
 
+void MIOSync(MIO *mio)
+{
+	msync(mio->addr,mio->size,MS_SYNC);
+	return;
+}
+
 	
