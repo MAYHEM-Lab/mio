@@ -148,6 +148,83 @@ MIO *MIOOpen(char *filename, char *mode, unsigned long int size)
 
 }
 
+/*
+ * useful when MIO exists
+ */
+MIO *MIOReOpen(char *filename)
+{
+	int err;
+	MIO *mio;
+	int flen;
+	char *f;
+	FILE *bf;
+	int fd;
+	int flags;
+	int prot;
+	unsigned long int size;
+	unsigned char zero = ' ';
+	struct stat fs;
+	char *mode = "a+";	/* for reopen */
+
+	err = stat(filename,&fs);
+	if(err < 0) {
+		return(NULL);
+	}
+
+	/*
+	 * try to open the file first
+	 */
+	bf = fopen(filename,mode);
+	if(bf == NULL) {
+		return(NULL);
+	}
+
+	fd = fileno(bf);
+	if(fd < 0) {
+		fclose(bf);
+		return(NULL);
+	}
+
+	mio = (MIO *)Malloc(sizeof(MIO));
+	if(mio == NULL) {
+		fclose(bf);
+		return(NULL);
+	}
+
+	flen = strlen(filename);
+	f = (char *)Malloc(flen+1);
+	if(f == NULL) {
+		MIOClose(mio);
+		return(NULL);
+	}
+
+	strncpy(f,filename,flen);
+	mio->fname = f;
+	strncpy(mio->mode,mode,sizeof(mio->mode));
+	mio->bf = bf;
+	mio->fd = fd;
+
+	prot = PROT_READ | PROT_WRITE;
+	flags = MAP_SHARED;
+
+	size = MIOFileSize(filename);
+	if(size == 0) {
+		fprintf(stderr,"MIOReOpen: file %s has bad size %lu\n",filename,size);
+	}
+
+	mio->addr = mmap(NULL,size,prot,flags,mio->fd,0);
+	if(mio->addr == MAP_FAILED) {
+		perror("MIOOpen");
+		MIOClose(mio);
+		return(NULL);
+	}
+	mio->size = size;
+	mio->text_index = NULL;
+
+	return(mio);
+
+}
+
 MIO *MIOMalloc(unsigned long int size)
 {
 	MIO *mio;
@@ -207,8 +284,6 @@ unsigned long int MIOSize(char *file)
 
 unsigned long int MIOFileSize(char *file)
 {
-	int psize;
-	unsigned long int size;
 	struct stat fs;
 	int err;
 
@@ -218,6 +293,20 @@ unsigned long int MIOFileSize(char *file)
 	}
 
 	return(fs.st_size);
+
+}
+
+mode_t MIOMode(char *file)
+{
+	struct stat fs;
+	int err;
+
+	err = stat(file,&fs);
+	if(err < 0) {
+		return(-1);
+	}
+
+	return(fs.st_mode);
 
 }
 

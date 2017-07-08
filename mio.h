@@ -26,6 +26,7 @@ typedef struct mio_stc MIO;
 #define MIOSEPARATORS " \n"	/* separator chars for text parsing */
 
 MIO *MIOOpen(char *filename, char *mode, unsigned long int size);
+MIO *MIOReOpen(char *filename);
 MIO *MIOMalloc(unsigned long int size);
 void MIOClose(MIO *mio);
 unsigned long int MIOSize(char *file);
