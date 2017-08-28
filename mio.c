@@ -12,7 +12,7 @@
 void MIOClose(MIO *mio)
 {
 	if(mio->addr != NULL) {
-		msync(mio->addr,mio->size,MS_SYNC);
+//		msync(mio->addr,mio->size,MS_SYNC);
 		munmap(mio->addr,mio->size);
 	}
 	if(mio->bf != NULL) {
