@@ -929,4 +929,10 @@ void MIOSync(MIO *mio)
 	return;
 }
 
+void MIOSyncObject(void *addr, int size)
+{
+	msync(addr,size,MS_SYNC);
+	return;
+}
+
 	

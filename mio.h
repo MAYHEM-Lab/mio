@@ -45,6 +45,7 @@ MIO *MIOOpenDouble(char *filename, char *mode, unsigned int long size);
 int MIOIndexText(MIO *mio);
 char *MIOGetText(MIO *mio, int rec, int field);
 void MIOSync(MIO *mio);
+void MIOSyncObject(void *addr, int size);
 
 #endif
 
