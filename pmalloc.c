@@ -120,10 +120,11 @@ void *PmallocInit(char *fname, unsigned long size)
 	return;
 }
 
-static void Coalesce()
+static void Pcoalesce()
 {
 	Mst *curr;
 	Mst *prev;
+	Mmeta *meta = Malloc_meta;
 
 #ifdef NO_COALESCE
 	return;
@@ -131,7 +132,7 @@ static void Coalesce()
 #ifdef THREAD
 	pthread_mutex_lock(&MLock);
 #endif
-	curr = M_head;
+	curr = meta->M_head;
 
 
 	/*
@@ -205,17 +206,20 @@ static void Coalesce()
 	return;
 }
 
-void *MyMalloc(int size)
+void *Pmalloc(int size)
 {
 	Mst *curr;
 	Mst *nextFree;
+	Mmeta *meta = Malloc_meta;
 	int remainingSize;
 	int lsize;
 
-	/*
-	 * do the init if it hasn't happened yet already
-	 */
-	InitMyMalloc();
+	if(Malloc_init == 0) {
+		fprintf(stderr,
+			"must call PmallocInit() before calling Pmalloc\n");
+		fflush(stderr);
+		exit(1);
+	}
 
 #ifdef THREAD
 	pthread_mutex_lock(&MLock);
@@ -223,7 +227,7 @@ void *MyMalloc(int size)
 	/*
 	 * M_head is head of the free list
 	 */
-	curr = M_head;
+	curr = meta->M_head;
 
 	/*
 	 * if M_head == NULL, all our space is allocated, return NULL
@@ -231,7 +235,7 @@ void *MyMalloc(int size)
 	 * this could happen if the first malloc allocates all of the
 	 * available storage
 	 */
-	if(M_head == NULL)
+	if(meta->M_head == NULL)
 	{
 #ifdef THREAD
 	pthread_mutex_unlock(&MLock);
@@ -376,9 +380,9 @@ void *MyMalloc(int size)
 	 * if we are giving away M_head, there is nothing in front of
 	 * it, and M_head should point to the new piece
 	 */
-	if(M_head == curr)
+	if(meta->M_head == curr)
 	{
-		M_head = nextFree;
+		meta->M_head = nextFree;
 	}
 
 	/*
@@ -399,12 +403,18 @@ void *MyMalloc(int size)
 	return((void *)curr->buffer);
 }
 
-void MyFree(void *i_buffer)
+void Pfree(void *i_buffer)
 {
 	Mst *toFree;	/* this is the Mst of the buffer coming back */
 	Mst *curr;
+	Mmeta *meta = Malloc_meta;
 
-	InitMyMalloc();
+	if(Malloc_init == 0) {
+		fprintf(stderr,
+			"must call PmallocInit before calling Pfree\n");
+		fflush(stderr);
+		exit(1);
+	}
 
 	if(i_buffer == NULL) {
 		return;
@@ -430,7 +440,7 @@ void MyFree(void *i_buffer)
 	 * keep the free list in sorted order -- it makes compacting
 	 * easier
 	 */
-	curr = M_head;
+	curr = meta->M_head;
 
 	/*
 	 * if the free list is empty, make this block the
@@ -438,7 +448,7 @@ void MyFree(void *i_buffer)
 	 */
 	if(curr == NULL)
 	{
-		M_head = toFree;
+		meta->M_head = toFree;
 		toFree->next = NULL;
 		toFree->prev = NULL;
 #ifdef THREAD
@@ -456,11 +466,11 @@ void MyFree(void *i_buffer)
 		toFree->next = curr;
 		curr->prev = toFree;
 		toFree->prev = NULL;
-		M_head = toFree;
+		meta->M_head = toFree;
 #ifdef THREAD
 		pthread_mutex_unlock(&MLock);
 #endif
-		Coalesce();
+		Pcoalesce();
 		return;
 	}
 
@@ -472,11 +482,6 @@ void MyFree(void *i_buffer)
 		curr = curr->next;
 	}
 
-if((curr != NULL) && (curr == toFree)) {
-printf("oops\n");
-exit(1);
-}
-
 	/*
 	 * here, either we have fallen off the end, in which case
 	 * toFree should be inserted at the end, or we have the right
@@ -487,7 +492,7 @@ exit(1);
 		/*
 		 * find the end again (can be made more efficient)
 		 */
-		curr = M_head;
+		curr = meta->M_head;
 		while(curr->next != NULL)
 		{
 			curr = curr->next;
@@ -498,7 +503,7 @@ exit(1);
 #ifdef THREAD
 		pthread_mutex_unlock(&MLock);
 #endif
-		Coalesce();
+		Pcoalesce();
 		return;
 	}
 
@@ -506,7 +511,7 @@ exit(1);
 	 * we have the right spot -- insert toFree immediately before
 	 * curr
 	 */
-	if(curr != M_head) {
+	if(curr != meta->M_head) {
 		curr->prev->next = toFree;
 		toFree->prev = curr->prev;
 	}
@@ -517,17 +522,18 @@ exit(1);
 	pthread_mutex_unlock(&MLock);
 #endif
 
-	Coalesce();
+	Pcoalesce();
 	return;
 }
 
 
 
-void PrintMyMallocFreeList()
+void PrintPmallocFreeList()
 {
 	Mst *curr;
+	Mmeta *meta = Malloc_meta;
 
-	if(M_head == NULL)
+	if(meta->M_head == NULL)
 	{
 		printf("Free List empty\n");
 		return;
@@ -536,7 +542,7 @@ void PrintMyMallocFreeList()
 #ifdef THREAD
 	pthread_mutex_lock(&MLock);
 #endif
-	curr = M_head;
+	curr = meta->M_head;
 
 	while(curr != NULL)
 	{

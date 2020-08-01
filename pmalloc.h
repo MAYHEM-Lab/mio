@@ -1,14 +1,11 @@
-#if !defined(MY_MALLOC_H)
-#define MY_MALLOC_H
+#if !defined(P_MALLOC_H)
+#define P_MALLOC_H
 
-#define MAX_MALLOC_SIZE (1024*1024*16)
-//#define MAX_MALLOC_SIZE (1000)
+void PmallocInit(char *fname, unsigned long size);
+void *Pmalloc(int size);
+void Pfree(void *buffer);
 
-void InitMyMalloc();
-void *MyMalloc(int size);
-void MyFree(void *buffer);
-
-void PrintMyMallocFreeList();		/* optional for debugging */
+void PrintPmallocFreeList();		/* optional for debugging */
 
 
 #endif
