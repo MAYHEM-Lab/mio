@@ -33,7 +33,7 @@ mio-record-test: mio-record-test.c ${INC} mio.h mio.o ${LIBS}
 mio-malloc-test: mio-malloc-test.c ${INC} mio.h mio.o my_malloc.o my_malloc.h ${LIBS}
 	${CC} ${CFLAGS} -o mio-malloc-test mio-malloc-test.c mio.o my_malloc.o ${LIBS}
 
-pmalloc-stress: pmalloc.o pmalloc.h mio.h mio.o ${LIBS}
+pmalloc-stress: pmalloc-stress.c pmalloc.o pmalloc.h mio.h mio.o ${LIBS}
 	${CC} ${CFLAGS} -o pmalloc-stress pmalloc-stress.c mio.o pmalloc.o ${LIBS}
 
 clean:
