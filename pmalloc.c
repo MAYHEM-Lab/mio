@@ -78,7 +78,7 @@ void PmallocInit(char *fname, unsigned long size, int mode)
 	/*
  	 * map a buffer backed by a file
 	 */
-	mio = MIOOpen(fname,"a+",bsize);
+	mio = MIOOpen(fname,"w+",bsize);
 	if(mio == NULL) {
 		fprintf(stderr,
 			"PmallocInit: failed with file %s and size %ld\n",
