@@ -17,6 +17,7 @@
 #define BUFS (1000)
 
 #define ARGS "f:s:S"
+
 char *Usage = "pmalloc-stress -f filename -s size <-S use sync mode>";
 
 char Fname[4096];

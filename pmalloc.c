@@ -100,6 +100,7 @@ void PmallocInit(char *fname, unsigned long size, int mode)
 	 */
 	meta->start = buff  + sizeof(Mmeta);
 	meta->M_head = (Mst *)meta->start;
+	meta->MBuffSize = size;
 
 	/*
 	 * initialize to have one big free piece
@@ -111,7 +112,7 @@ void PmallocInit(char *fname, unsigned long size, int mode)
 	/*
 	 * use pointer arithmetic to get the buffer pointer
 	 */
-	meta->M_head->buffer = (unsigned char *)meta->start;
+	meta->M_head->buffer = (unsigned char *)meta->start+sizeof(Mst);
 
 	Malloc_meta = meta;
 	Malloc_init = 1;
