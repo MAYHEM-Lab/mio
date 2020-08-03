@@ -1,9 +1,11 @@
 #if !defined(P_MALLOC_H)
 #define P_MALLOC_H
 
-void PmallocInit(char *fname, unsigned long size);
+/* mode == 0 => sync on close, 1 => sync on access */
+void PmallocInit(char *fname, unsigned long size, int mode);
 void *Pmalloc(int size);
 void Pfree(void *buffer);
+void PmallocSync();
 
 void PrintPmallocFreeList();		/* optional for debugging */
 

@@ -11,7 +11,8 @@
 #endif
 
 
-#include "my_malloc.h"
+#include "mio.h"
+#include "pmalloc.h"
 
 #define ALIGNSIZE (sizeof (double))
 
@@ -36,6 +37,7 @@ struct malloc_meta
 	Mst *M_head;
 	unsigned long MBuffSize;
 	unsigned char *start;
+	int mode;
 };
 
 typedef struct malloc_meta Mmeta;
@@ -54,7 +56,7 @@ static void PrintMst(Mst *m)
 
 	return;
 }
-void *PmallocInit(char *fname, unsigned long size)
+void PmallocInit(char *fname, unsigned long size, int mode)
 {
 	MIO *mio;
 	Mmeta *meta;
@@ -79,7 +81,7 @@ void *PmallocInit(char *fname, unsigned long size)
 	mio = MIOOpen(fname,"w",bsize);
 	if(mio == NULL) {
 		fprintf(stderr,
-			"PmallocInit: failed with file %s and size %d\n",
+			"PmallocInit: failed with file %s and size %ld\n",
 				fname,
 				size);
 		fflush(stderr);
@@ -113,6 +115,10 @@ void *PmallocInit(char *fname, unsigned long size)
 
 	Malloc_meta = meta;
 	Malloc_init = 1;
+	meta->mode = mode;
+	if(meta->mode == 1) {
+		MIOSync(mio);
+	}
 #ifdef THREAD
 	pthread_mutex_unlock(&MLock);
 #endif
@@ -180,12 +186,22 @@ static void Pcoalesce()
 			if(curr->next != NULL)
 			{
 				curr->next->prev = prev;
+				/* sync because it has changed */
+				if(meta->mode == 1) {
+					MIOSyncObject(curr->next,sizeof(Mst));
+				}
 			}
 			/*
 			 * add its size and the size of the memory structure
 			 * to the size of the previous block
 			 */
 			prev->size += (curr->size + sizeof(Mst));
+			/*
+			 * sync curr and prev since they have been altered
+			 */
+			if(meta->mode == 1) {
+				MIOSyncObject(prev,sizeof(Mst));
+			}
 			/*
 			 * bump curr along, but leave prev where it is
 			 * since it is still the prev of the next slot
@@ -308,17 +324,26 @@ void *Pmalloc(int size)
 		if(curr->prev != NULL)
 		{
 			curr->prev->next = curr->next;
+			if(meta->mode == 1) {
+				MIOSyncObject(curr->prev,sizeof(Mst));
+			}
 		}
 		if(curr->next != NULL)
 		{
 			curr->next->prev = curr->prev;
+			if(meta->mode == 1) {
+				MIOSyncObject(curr->next,sizeof(Mst));
+			}
 		}
 		/*
 		 * notice that M_head could become NULL here
 		 */
-		if(M_head == curr)
+		if(meta->M_head == curr)
 		{
-			M_head = curr->next;
+			meta->M_head = curr->next;
+			if(meta->mode == 1) {
+				MIOSyncObject(meta,sizeof(Mmeta));
+			}
 		}
 		if(curr->alloc == 1) {
 			fprintf(stderr,"realloc: 0x%lx\n",(long unsigned int)curr);
@@ -328,6 +353,9 @@ void *Pmalloc(int size)
 		curr->alloc = 1;
 		curr->next = NULL;
 		curr->prev = NULL;
+		if(meta->mode == 1) {
+			MIOSyncObject(curr,sizeof(Mst));
+		}
 #ifdef THREAD
 		pthread_mutex_unlock(&MLock);
 #endif
@@ -360,20 +388,34 @@ void *Pmalloc(int size)
 	{
 		curr->next->prev = nextFree;
 		nextFree->next = curr->next;
+		if(meta->mode == 1) {
+			MIOSyncObject(curr->next,sizeof(Mst));
+			MIOSyncObject(nextFree,sizeof(Mst));
+		}
 	}
 	else
 	{
 		nextFree->next = NULL;
+		if(meta->mode == 1) {
+			MIOSyncObject(nextFree,sizeof(Mst));
+		}
 	}
 
 	if(curr->prev != NULL)
 	{
 		curr->prev->next = nextFree;
 		nextFree->prev = curr->prev;
+		if(meta->mode == 1) {
+			MIOSyncObject(curr->prev,sizeof(Mst));
+			MIOSyncObject(nextFree,sizeof(Mst));
+		}
 	}
 	else
 	{
 		nextFree->prev = NULL;
+		if(meta->mode == 1) {
+			MIOSyncObject(nextFree,sizeof(Mst));
+		}
 	}
 
 	/*
@@ -383,6 +425,9 @@ void *Pmalloc(int size)
 	if(meta->M_head == curr)
 	{
 		meta->M_head = nextFree;
+		if(meta->mode == 1) {
+			MIOSyncObject(meta,sizeof(Mmeta));
+		}
 	}
 
 	/*
@@ -397,6 +442,9 @@ void *Pmalloc(int size)
 	curr->prev = NULL;
 
 	curr->alloc = 1;
+	if(meta->mode == 1) {
+		MIOSyncObject(curr,sizeof(Mst));
+	}
 #ifdef THREAD
 	pthread_mutex_unlock(&MLock);
 #endif
@@ -451,6 +499,10 @@ void Pfree(void *i_buffer)
 		meta->M_head = toFree;
 		toFree->next = NULL;
 		toFree->prev = NULL;
+		if(meta->mode == 1) {
+			MIOSyncObject(meta,sizeof(Mmeta));
+			MIOSyncObject(toFree,sizeof(Mst));
+		}
 #ifdef THREAD
 		pthread_mutex_unlock(&MLock);
 #endif
@@ -467,6 +519,11 @@ void Pfree(void *i_buffer)
 		curr->prev = toFree;
 		toFree->prev = NULL;
 		meta->M_head = toFree;
+		if(meta->mode == 1) {
+			MIOSyncObject(toFree,sizeof(Mst));
+			MIOSyncObject(curr,sizeof(Mst));
+			MIOSyncObject(meta,sizeof(Mmeta));
+		}
 #ifdef THREAD
 		pthread_mutex_unlock(&MLock);
 #endif
@@ -500,6 +557,10 @@ void Pfree(void *i_buffer)
 		curr->next = toFree;
 		toFree->prev = curr;
 		toFree->next = NULL;
+		if(meta->mode == 1) {
+			MIOSyncObject(curr,sizeof(Mst));
+			MIOSyncObject(toFree,sizeof(Mst));
+		}
 #ifdef THREAD
 		pthread_mutex_unlock(&MLock);
 #endif
@@ -514,9 +575,18 @@ void Pfree(void *i_buffer)
 	if(curr != meta->M_head) {
 		curr->prev->next = toFree;
 		toFree->prev = curr->prev;
+		if(meta->mode == 1) {
+			MIOSyncObject(curr->prev,sizeof(Mst));
+			MIOSyncObject(toFree,sizeof(Mst));
+		}
 	}
 	toFree->next = curr;
 	curr->prev = toFree;
+	if(meta->mode == 1) {
+		MIOSyncObject(toFree,sizeof(Mst));
+		MIOSyncObject(curr,sizeof(Mst));
+	}
+
 
 #ifdef THREAD
 	pthread_mutex_unlock(&MLock);
@@ -553,5 +623,17 @@ void PrintPmallocFreeList()
 #ifdef THREAD
 	pthread_mutex_unlock(&MLock);
 #endif
+	return;
+}
+
+void PmallocSync()
+{
+	Mmeta *meta = Malloc_meta;
+
+	if(Malloc_init == 0) {
+		return;
+	}
+
+	MIOSyncObject(meta,meta->MBuffSize+sizeof(Mmeta));
 	return;
 }
