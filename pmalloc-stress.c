@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 			size = (int)(RAND() * 25000);
 			ptr[where] = Pmalloc(size);
 			if(SyncMode == 1) {
-				PmallocSync(ptr[where],size);
+				PmallocSyncObject(ptr[where],size);
 			}
 			if(ptr[where] == NULL)
 			{
