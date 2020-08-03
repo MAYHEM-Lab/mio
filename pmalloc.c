@@ -638,3 +638,9 @@ void PmallocSync()
 	MIOSyncObject(meta,meta->MBuffSize+sizeof(Mmeta));
 	return;
 }
+
+void PmallocSyncObject(unsigned char *addr, int size)
+{
+	MIOSyncObject(addr,size);
+	return;
+}

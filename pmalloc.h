@@ -5,6 +5,7 @@
 void PmallocInit(char *fname, unsigned long size, int mode);
 void *Pmalloc(int size);
 void Pfree(void *buffer);
+void PmallocSyncObject(unsigned char *addr, int size);
 void PmallocSync();
 
 void PrintPmallocFreeList();		/* optional for debugging */
